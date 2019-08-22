@@ -6,6 +6,27 @@ import Layout from "../components/layout"
 import SEO from "../components/seo"
 import { rhythm, scale } from "../utils/typography"
 
+import gql from 'graphql-tag';
+import { Query } from 'react-apollo';
+import Comment from '../components/comment';
+
+const GET_POST_COMMENTS = gql`
+  query GetCommentsForPost($postPath: String!){
+    listComments(
+      filter:{ postPath:{
+          eq: $postPath
+      }}
+    ) {
+      items {
+        id
+        timestamp
+        content
+        postPath
+      }
+    }
+  }
+`;
+
 class BlogPostTemplate extends React.Component {
   render() {
     const post = this.props.data.markdownRemark
@@ -44,6 +65,31 @@ class BlogPostTemplate extends React.Component {
               marginBottom: rhythm(1),
             }}
           />
+          <div style={{ margin: '10px 0 60px 0' }}>
+  <h3>Comments:</h3>
+  <Query query={GET_POST_COMMENTS} variables={{ postPath: post.fields.slug.replace(/\//g, '') }}>
+    {({ loading, error, data }) => {
+      if (loading) {
+        return (<div>Loading...</div>);
+      }
+      if (error) {
+        console.error(error);
+        return (<div>Error!</div>);
+      }
+      const comments = data.listComments.items;
+      return (
+        comments.length <= 0 ?
+          <div>No comments</div>
+          :
+          (
+            <ul>
+              {comments.map(comment => <Comment comment={comment} />)}
+            </ul>
+          )
+      )
+    }}
+  </Query>
+</div>
           <footer>
             <Bio />
           </footer>
@@ -94,6 +140,9 @@ export const pageQuery = graphql`
       id
       excerpt(pruneLength: 160)
       html
+      fields {
+        slug
+      }
       frontmatter {
         title
         date(formatString: "MMMM DD, YYYY")
